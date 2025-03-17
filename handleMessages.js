@@ -6,6 +6,7 @@ const db = new sqlite3("db.db",
     }
 );
 const { client } = require("./clientInstance.js");
+const { Guild, Message, Channel } = require("discord.js-selfbot-v13");
 
 process.addListener("SIGINT", () => {
     console.log("Waiting to close db...")
@@ -39,7 +40,17 @@ db.exec(`
         UNIQUE(id, name, icon, splash, banner, features, owner_id, created_timestamp)
     );`
 );
-
+db.exec(`
+    CREATE TABLE IF NOT EXISTS channels (
+        id INTEGER,
+        guild_id INTEGER,
+        name TEXT,
+        position INTEGER,
+        created_timestamp INTEGER,
+        update_time INTEGER,
+        UNIQUE(id, guild_id, name, position, created_timestamp)
+    );`
+);
 db.exec(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
     is_bot INTEGER,
@@ -48,13 +59,15 @@ db.exec(`CREATE TABLE IF NOT EXISTS users (
 `);
 db.exec(`CREATE TABLE IF NOT EXISTS userdetails (
     id INTEGER,
+    name TEXT,
+    create_time INTEGER,
     avatar TEXT,
     banner TEXT,
     banner_color TEXT,
     accent_color TEXT,
     avatar_decoration_data TEXT,
     update_time INTEGER,
-    UNIQUE(id, avatar, banner, banner_color, accent_color, avatar_decoration_data)
+    UNIQUE(id, name, create_time, avatar, banner, banner_color, accent_color, avatar_decoration_data)
 );
 `);
 db.exec(`CREATE TABLE IF NOT EXISTS messages (
@@ -62,6 +75,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS messages (
     guild_id INTEGER,
     channel_id INTEGER,
     author_id INTEGER,
+    author_nick TEXT,
     content TEXT,
     timestamp INTEGER,
     attachments TEXT,
@@ -76,7 +90,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS messages (
 
 /**
  * 
- * @param {*} message The entire message object from the event.
+ * @param {Message} message The entire message object from the event.
  */
 function recordNew(message) {
     let stmt;
@@ -87,6 +101,7 @@ function recordNew(message) {
             guild_id,
             channel_id,
             author_id,
+            author_nick,
             content,
             timestamp,
             attachments,
@@ -96,7 +111,7 @@ function recordNew(message) {
             mentions_users,
             mentions_roles
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
@@ -110,12 +125,22 @@ function recordNew(message) {
     let mentionsRoles = JSON.stringify(message.mentions.roles.map(a => a.id)).trim();
     if (mentionsRoles.length < 3) mentionsRoles = null;
 
+    let nick;
+    if (message.member) {
+        nick = message.member.displayName;
+    } else if (message.author.globalName) {
+        nick = message.author.globalName;
+    } else {
+        nick = message.author.tag;
+    }
+
     try {
         let last = stmt.run(
             message.id,
             message.guildId,
             message.channelId,
             message.author.id,
+            nick,
             message.content,
             message.createdTimestamp,
             attachmentsJson,
@@ -131,6 +156,8 @@ function recordNew(message) {
         console.error(error);
     }
     userSeen(message);
+    updateGuild(message.guild);
+    updateChannel(message.channel, message.guild);
 }
 
 function userSeen(message) {
@@ -149,11 +176,13 @@ function userSeen(message) {
         // Update user details if needed
         const stmt2 = db.prepare(
             `INSERT OR IGNORE INTO userdetails (
-            id, avatar, banner, banner_color, accent_color, avatar_decoration_data, update_time
-            ) VALUES (?, ?, ?, ?, ?, ?, ?);`
+            id, name, create_time, avatar, banner, banner_color, accent_color, avatar_decoration_data, update_time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
         stmt2.run(
             author.id,
+            String(author.username),
+            author.createdTimestamp,
             (author.avatar === null || author.avatar === undefined) ? "" : String(author.avatar),
             (author.banner === null || author.banner === undefined) ? "" : String(author.banner),
             (author.bannerColor === null || author.bannerColor === undefined) ? "" : String(author.bannerColor),
@@ -173,6 +202,10 @@ function updateGuilds(guildcache) {
     });
 }
 
+/**
+ * 
+ * @param {Guild} guild 
+ */
 function updateGuild(guild) {
     try {
         const stmt = db.prepare(
@@ -193,7 +226,33 @@ function updateGuild(guild) {
 
 }
 
+/**
+ * 
+ * @param {Channel} channel 
+ * @param {Guild} guild
+ */
+function updateChannel(channel, guild) {
+    try {
+        const stmt = db.prepare(
+            `INSERT OR IGNORE INTO channels (
+            id, guild_id, name, position, created_timestamp, update_time)
+            VALUES (?, ?, ?, ?, ?, ?);`
+        );
+        stmt.run(
+            channel.id,
+            guild.id,
+            guild.channels.cache.get(channel.id).name,
+            guild.channels.cache.get(channel.id).rawPosition,
+            guild.channels.cache.get(channel.id).createdTimestamp,
+            Date.now()
+        );
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 module.exports = {
     recordNew,
-    updateGuilds
+    updateGuilds,
+    updateGuild
 }
