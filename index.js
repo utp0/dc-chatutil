@@ -1,6 +1,7 @@
 // env
 const dotenv = require("dotenv");
 dotenv.config();
+dotenv.config({ path: "./.env.private" });
 
 if (!process.env["DISCORD_TOKEN"]) {
     throw new Error("Env var DISCORD_TOKEN not set.");
