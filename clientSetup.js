@@ -1,3 +1,6 @@
+const { Client } = require("discord.js-selfbot-v13");
+const { recordNew } = require("./handleMessages.js");
+
 /**
  * 
  * @param {Client} client 
@@ -8,7 +11,7 @@ function doSetup(client) {
     });
 
     client.on("messageCreate", (message) => {
-        console.log("New message:\n", message);
+        recordNew(message);
     });
 }
 

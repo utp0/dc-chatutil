@@ -15,7 +15,7 @@ doSetup(client);
 // login
 
 client.login(process.env["DISCORD_TOKEN"].toString()).then((val) => {
-    console.log("Login ok; ", val);
+    console.log("Login ok probably; ");  // TODO: don't probably
 }
 ).catch((reason) => {
     if (reason.code == "TokenInvalid") {

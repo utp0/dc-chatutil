@@ -2,10 +2,9 @@ const { Client, GatewayIntentBits } = require("discord.js-selfbot-v13")
 
 class ClientInstance {
     static instance = undefined;
-    #client = undefined;
     constructor() {
         if (!ClientInstance.instance) {
-            this.#client = new Client(/*{
+            this.instance = new Client(/*{
                 intents: [
                     GatewayIntentBits.GuildMessages,
                     GatewayIntentBits.GuildMessageReactions,
@@ -21,11 +20,18 @@ class ClientInstance {
      * @returns {Client}
      */
     getClient() {
-        return this.#client;
+        return this.instance;
     }
 }
 
 const instance = new ClientInstance();
+
+process.addListener("SIGINT", () => {  // TODO: make this work
+    console.log("destroying client...");
+    instance.getClient().destroy();  // TODO: graceful disconnect?
+    console.log("client destroyed.");
+})
+
 module.exports = {
     client: instance.getClient()
 }
