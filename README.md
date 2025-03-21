@@ -10,12 +10,16 @@ For now, no foreign keys are used to allow recording partial data if anything fa
 ## TODO
 
 - [x] Save necessary data into tables
-    - [ ] Customize data to be saved
+  - [ ] Customize data to be saved
+- [ ] Saving of past messages
 - [ ] Handle threads
 - [ ] Handle polls
+- [ ] Handle reactions
 - [ ] UI
-    - [ ] Live message log
-        - [ ] filters
-    - [ ] Known server list
-    - [ ] Known channel list
-    - [ ] Known users list
+  - [ ] Live message log
+    - [ ] filters
+  - [ ] Known server list
+  - [ ] Known channel list
+  - [ ] Known users list
+
+- [ ] Cleanup unnecessary reference passes, get them from main object

@@ -1,96 +1,18 @@
 const sqlite3 = require("better-sqlite3");
-const db = new sqlite3("db.db",
-    {
-        fileMustExist: false,
-        readonly: false,
-    }
-);
+
+/**
+ * @type {sqlite3.Database}
+ */
+const db = require("./dbInstance.js").getDb();
 const { client } = require("./clientInstance.js");
-const { Guild, Message, Channel } = require("discord.js-selfbot-v13");
+const { Guild, Message, Channel, ReactionManager, User } = require("discord.js-selfbot-v13");
 
-process.addListener("SIGINT", () => {
-    console.log("Waiting to close db...")
-    setTimeout(() => {
-        console.log("closing db...");
-        db.close();
-        console.log("db closed.");
-    }, 1000);
-})
-
-// init database
-try {
-    db.exec(`PRAGMA encoding = 'UTF-8';`);
-    db.exec(`PRAGMA main.journal_mode = DELETE;`);
-} catch (error) {
-    console.error(error);
-    console.warn("Warning! Cannot set desired database pragmas, continuing without them.");
-}
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS guilds (
-        id INTEGER,
-        name TEXT,
-        icon TEXT,
-        splash TEXT,
-        banner TEXT,
-        features TEXT,
-        owner_id INTEGER,
-        created_timestamp INTEGER,
-        update_time INTEGER,
-        UNIQUE(id, name, icon, splash, banner, features, owner_id, created_timestamp)
-    );`
-);
-db.exec(`
-    CREATE TABLE IF NOT EXISTS channels (
-        id INTEGER,
-        guild_id INTEGER,
-        name TEXT,
-        position INTEGER,
-        created_timestamp INTEGER,
-        update_time INTEGER,
-        UNIQUE(id, guild_id, name, position, created_timestamp)
-    );`
-);
-db.exec(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
-    is_bot INTEGER,
-    is_system INTEGER
-);
-`);
-db.exec(`CREATE TABLE IF NOT EXISTS userdetails (
-    id INTEGER,
-    name TEXT,
-    create_time INTEGER,
-    avatar TEXT,
-    banner TEXT,
-    banner_color TEXT,
-    accent_color TEXT,
-    avatar_decoration_data TEXT,
-    update_time INTEGER,
-    UNIQUE(id, name, create_time, avatar, banner, banner_color, accent_color, avatar_decoration_data)
-);
-`);
-db.exec(`CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY,
-    guild_id INTEGER,
-    channel_id INTEGER,
-    author_id INTEGER,
-    author_nick TEXT,
-    content TEXT,
-    timestamp INTEGER,
-    attachments TEXT,
-    type TEXT,
-    replied_to_id INTEGER,
-    mentions_everyone INTEGER,
-    mentions_users TEXT,
-    mentions_roles TEXT
-);
-`);
-
+// db setup
+require("./dbSetup.js").setup(db);
 
 /**
  * 
- * @param {Message} message The entire message object from the event.
+ * @param {Message} message entire message object
  */
 function recordNew(message) {
     let stmt;
@@ -155,13 +77,12 @@ function recordNew(message) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
         console.error(error);
     }
-    userSeen(message);
-    updateGuild(message.guild);
-    updateChannel(message.channel, message.guild);
+
+    //updateGuild(message.guild);
+    //updateChannel(message.channel, message.guild);
 }
 
-function userSeen(message) {
-    const author = message.author;
+function userSeen(author, timestamp) {
     try {
         // Adding to the users table will be the least common here
         const stmt = db.prepare(
@@ -188,12 +109,42 @@ function userSeen(message) {
             (author.bannerColor === null || author.bannerColor === undefined) ? "" : String(author.bannerColor),
             (author.accentColor === null || author.accentColor === undefined) ? "" : String(author.accentColor),
             (author.avatarDecorationData === null || author.avatarDecorationData === undefined) ? "" : String(author.avatarDecorationData),
-            message.createdTimestamp
+            timestamp
         );
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
         console.error(error);
     }
+}
+
+/**
+ * 
+ * @param {ReactionManager} reactionManager from a message
+ * @param {boolean} boolAdded true if added, false if removed
+ * @param {boolean} boolBackfill true if historical, false if event based
+ */
+function recordReaction(reactionManager, boolAdded, boolBackfill) {
+    const stmt = db.prepare(
+        `INSERT OR IGNORE INTO reactions (
+        message_id, emoji_id, emoji_name, user_id, bool_added, bool_backfill, record_time)
+        VALUES(?, ?, ?, ?, ?, ?, ?);
+        `
+    );
+    const curUserIds = [];
+    reactionManager.users.cache.forEach(async a => {
+        curUserIds.push(a.id);
+    });
+    curUserIds.forEach(userId => {
+        stmt.run(
+            reactionManager.message.id,
+            reactionManager.emoji.id ?? 0,
+            reactionManager.emoji.name ?? "",
+            userId,
+            boolAdded === false ? 0 : 1,
+            boolBackfill === true ? 1 : 0,
+            Date.now()
+        );
+    });
 }
 
 function updateGuilds(guildcache) {
@@ -208,6 +159,7 @@ function updateGuilds(guildcache) {
  */
 function updateGuild(guild) {
     try {
+        if (!guild) return;  // not a guild
         const stmt = db.prepare(
             `INSERT OR IGNORE INTO guilds (
             id, name, icon, splash, banner, features, owner_id, created_timestamp, update_time)
@@ -231,21 +183,33 @@ function updateGuild(guild) {
  * @param {Channel} channel 
  * @param {Guild} guild
  */
-function updateChannel(channel, guild) {
+function updateChannel(channel) {
+    const guild = channel.guild ?? null;
     try {
         const stmt = db.prepare(
             `INSERT OR IGNORE INTO channels (
             id, guild_id, name, position, created_timestamp, update_time)
             VALUES (?, ?, ?, ?, ?, ?);`
         );
-        stmt.run(
-            channel.id,
-            guild.id,
-            guild.channels.cache.get(channel.id).name,
-            guild.channels.cache.get(channel.id).rawPosition,
-            guild.channels.cache.get(channel.id).createdTimestamp,
-            Date.now()
-        );
+        if (guild) {
+            stmt.run(
+                channel.id,
+                guild.id,
+                guild.channels.cache.get(channel.id).name,
+                guild.channels.cache.get(channel.id).rawPosition,
+                guild.channels.cache.get(channel.id).createdTimestamp,
+                Date.now()
+            );
+        } else {
+            stmt.run(
+                channel.id,
+                0,
+                channel.name ?? 0,
+                channel.rawPosition ?? 0,
+                channel.createdTimestamp ?? 0,
+                Date.now()
+            );
+        }
     } catch (error) {
         console.error(error);
     }
@@ -254,5 +218,8 @@ function updateChannel(channel, guild) {
 module.exports = {
     recordNew,
     updateGuilds,
-    updateGuild
+    updateGuild,
+    recordReaction,
+    userSeen,
+    updateChannel
 }
