@@ -7,14 +7,20 @@
 Will be finalized later. Until then, the `CREATE TABLE` statements can be found in the code.<br>
 For now, no foreign keys are used to allow recording partial data if anything fails or isn't as expected.
 
-## TODO
+## Stuff that's working or not
 
-- [x] Save necessary data into tables
-  - [ ] Customize data to be saved
-- [ ] Saving of past messages
-- [ ] Handle threads
+### Event-based
+
+- [ ] Customize data to be saved
+- [x] Handle messages
+- [x] Handle servers
+- [x] Handle channels
+- [x] Handle threads + list sync
 - [ ] Handle polls
 - [ ] Handle reactions
+  - [x] Add
+    - [ ] batch
+  - [ ] Remove
 - [ ] UI
   - [ ] Live message log
     - [ ] filters
@@ -22,4 +28,13 @@ For now, no foreign keys are used to allow recording partial data if anything fa
   - [ ] Known channel list
   - [ ] Known users list
 
+### Old data
+
+- [ ] Saving of past messages
+- [ ] ...
+
+### Other things
+
+- [x] Necessary tables
 - [ ] Cleanup unnecessary reference passes, get them from main object
+- [ ] Code quality improvements
