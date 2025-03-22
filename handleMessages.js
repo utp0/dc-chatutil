@@ -31,9 +31,10 @@ function recordNew(message) {
             replied_to_id,
             mentions_everyone,
             mentions_users,
-            mentions_roles
+            mentions_roles,
+            edit_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
@@ -59,27 +60,24 @@ function recordNew(message) {
     try {
         let last = stmt.run(
             message.id,
-            message.guildId,
-            message.channelId,
-            message.author.id,
-            nick,
+            message.guildId ?? 0,
+            message.channelId ?? 0,
+            message.author.id ?? 0,
+            nick ?? "",
             message.content,
-            message.createdTimestamp,
-            attachmentsJson,
+            message.createdTimestamp ?? 0,
+            attachmentsJson ?? "",
             message.type ?? "",  // probably always has a value
             ("" + message.type).toUpperCase().trim() === "REPLY" ? message.reference.messageId : "",
             message.mentions.everyone ? 1 : 0,
-            mentionsUsers,
-            mentionsRoles
+            mentionsUsers ?? "",
+            mentionsRoles ?? "",
+            message.editedTimestamp ?? 0
         );
-        //console.log(`messages\t${last.lastInsertRowid}`);
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
         console.error(error);
     }
-
-    //updateGuild(message.guild);
-    //updateChannel(message.channel, message.guild);
 }
 
 function userSeen(author, timestamp) {
@@ -102,13 +100,13 @@ function userSeen(author, timestamp) {
         );
         stmt2.run(
             author.id,
-            String(author.username),
-            author.createdTimestamp,
+            String(author.username) ?? "",
+            author.createdTimestamp ?? 0,
             (author.avatar === null || author.avatar === undefined) ? "" : String(author.avatar),
             (author.banner === null || author.banner === undefined) ? "" : String(author.banner),
             (author.bannerColor === null || author.bannerColor === undefined) ? "" : String(author.bannerColor),
             (author.accentColor === null || author.accentColor === undefined) ? "" : String(author.accentColor),
-            (author.avatarDecorationData === null || author.avatarDecorationData === undefined) ? "" : String(author.avatarDecorationData),
+            (author.avatarDecorationData === null || author.avatarDecorationData === undefined) ? "" : JSON.stringify(author.avatarDecorationData),
             timestamp
         );
     } catch (error) {
@@ -167,8 +165,14 @@ function updateGuild(guild) {
         );
 
         stmt.run(
-            guild.id, guild.name ?? "", guild.icon ?? "", guild.splash ?? "", guild.banner ?? "",
-            JSON.stringify(guild.features), guild.ownerId ?? "", guild.createdTimestamp,
+            guild.id,
+            guild.name ?? "",
+            guild.icon ?? "",
+            guild.splash ?? "",
+            guild.banner ?? "",
+            JSON.stringify(guild.features) ?? "",
+            guild.ownerId ?? 0,
+            guild.createdTimestamp ?? 0,
             Date.now()
         );
     } catch (error) {
@@ -195,17 +199,17 @@ function updateChannel(channel) {
             stmt.run(
                 channel.id,
                 guild.id,
-                guild.channels.cache.get(channel.id).name,
-                guild.channels.cache.get(channel.id).rawPosition,
-                guild.channels.cache.get(channel.id).createdTimestamp,
+                guild.channels.cache.get(channel.id).name ?? "",
+                guild.channels.cache.get(channel.id).rawPosition ?? -1,
+                guild.channels.cache.get(channel.id).createdTimestamp ?? 0,
                 Date.now()
             );
         } else {
             stmt.run(
                 channel.id,
                 0,
-                channel.name ?? 0,
-                channel.rawPosition ?? 0,
+                channel.name ?? "",
+                channel.rawPosition ?? -1,
                 channel.createdTimestamp ?? 0,
                 Date.now()
             );
@@ -215,11 +219,40 @@ function updateChannel(channel) {
     }
 }
 
+function updateThread(thread) {
+    const stmt = db.prepare(`INSERT OR IGNORE INTO threads(
+    id, name, created_timestamp, channel_id, owner_id, archived_timestamp, update_time)
+    VALUES(?, ?, ?, ?, ?, ?, ?);`
+    );
+    stmt.run(
+        thread.id,
+        thread.name ?? "" ,
+        thread.createdTimestamp ?? 0,
+        thread.parentId ?? 0,
+        thread.ownerId ?? 0,
+        thread.archived ? thread.archivedTimestamp : 0,
+        Date.now()
+    );
+}
+
+function recordDeletion(id) {
+    const stmt = db.prepare(`INSERT OR IGNORE INTO deletions (
+        id, timestamp)
+        VALUES (?, ?);`
+    );
+    stmt.run(
+        id,
+        Date.now()
+    );
+}
+
 module.exports = {
     recordNew,
     updateGuilds,
     updateGuild,
     recordReaction,
     userSeen,
-    updateChannel
+    updateChannel,
+    updateThread,
+    recordDeletion,
 }
