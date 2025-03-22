@@ -7,7 +7,11 @@ const { Database } = require("better-sqlite3");
 function setup(db) {
     try {
         db.exec(`PRAGMA encoding = 'UTF-8';`);
-        db.exec(`PRAGMA main.journal_mode = DELETE;`);
+        db.exec(`PRAGMA journal_mode = WAL;`);
+        db.exec(`PRAGMA synchronous = EXTRA;`);
+        db.exec(`PRAGMA cache_size = -8192;`);
+        db.exec(`PRAGMA journal_size_limit = 2097152;`);
+        db.exec(`PRAGMA foreign_keys = ON;`);  // though unused right now, don't have it off
     } catch (error) {
         console.error(error);
         console.warn("Warning! Cannot set desired database pragmas, continuing without them.");
@@ -58,7 +62,7 @@ function setup(db) {
     );
     `);
     db.exec(`CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY,
+    id INTEGER,
     guild_id INTEGER,
     channel_id INTEGER,
     author_id INTEGER,
@@ -71,9 +75,10 @@ function setup(db) {
     mentions_everyone INTEGER,
     mentions_users TEXT,
     mentions_roles TEXT,
+    edit_time INTEGER,
     UNIQUE(id, guild_id, channel_id, author_id, author_nick, content,
     timestamp, attachments, type, replied_to_id, mentions_everyone,
-    mentions_users, mentions_roles)
+    mentions_users, mentions_roles, edit_time)
     );
     `);
     db.exec(`CREATE TABLE IF NOT EXISTS reactions (
@@ -86,6 +91,22 @@ function setup(db) {
     record_time INTEGER
     );
     `);
+    db.exec(`CREATE TABLE IF NOT EXISTS threads (
+    id INTEGER,
+    name TEXT,
+    created_timestamp INTEGER,
+    channel_id INTEGER,
+    owner_id INTEGER,
+    archived_timestamp INTEGER,
+    update_time INTEGER,
+    UNIQUE(id, name, channel_id, owner_id, archived_timestamp)
+    );
+    `);
+    db.exec(`CREATE TABLE IF NOT EXISTS deletions (
+        id INTEGER,
+        timestamp INTEGER
+        );`
+    );
 }
 
 module.exports = {

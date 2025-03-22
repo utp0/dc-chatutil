@@ -31,9 +31,10 @@ function recordNew(message) {
             replied_to_id,
             mentions_everyone,
             mentions_users,
-            mentions_roles
+            mentions_roles,
+            edit_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
@@ -70,16 +71,13 @@ function recordNew(message) {
             ("" + message.type).toUpperCase().trim() === "REPLY" ? message.reference.messageId : "",
             message.mentions.everyone ? 1 : 0,
             mentionsUsers,
-            mentionsRoles
+            mentionsRoles,
+            message.editedTimestamp ?? 0
         );
-        //console.log(`messages\t${last.lastInsertRowid}`);
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
         console.error(error);
     }
-
-    //updateGuild(message.guild);
-    //updateChannel(message.channel, message.guild);
 }
 
 function userSeen(author, timestamp) {
@@ -204,7 +202,7 @@ function updateChannel(channel) {
             stmt.run(
                 channel.id,
                 0,
-                channel.name ?? 0,
+                channel.name ?? "",
                 channel.rawPosition ?? 0,
                 channel.createdTimestamp ?? 0,
                 Date.now()
@@ -215,11 +213,36 @@ function updateChannel(channel) {
     }
 }
 
+function updateThread(thread) {
+    const stmt = db.prepare(`INSERT OR IGNORE INTO threads(
+    id, name, created_timestamp, channel_id, owner_id, archived_timestamp, update_time)
+    VALUES(?, ?, ?, ?, ?, ?, ?);`
+    );
+    stmt.run(
+        thread.id, thread.name, thread.createdTimestamp, thread.parentId, thread.ownerId,
+        thread.archived ? thread.archivedTimestamp : 0,
+        Date.now()
+    );
+}
+
+function recordDeletion(id) {
+    const stmt = db.prepare(`INSERT OR IGNORE INTO deletions (
+        id, timestamp)
+        VALUES (?, ?);`
+    );
+    stmt.run(
+        id,
+        Date.now()
+    );
+}
+
 module.exports = {
     recordNew,
     updateGuilds,
     updateGuild,
     recordReaction,
     userSeen,
-    updateChannel
+    updateChannel,
+    updateThread,
+    recordDeletion,
 }

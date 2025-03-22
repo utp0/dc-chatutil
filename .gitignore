@@ -1,4 +1,8 @@
 *.env.private
 node_modules/
+/db/
 db.db
+*-journal
+*-shm
+*-wal
 *.log

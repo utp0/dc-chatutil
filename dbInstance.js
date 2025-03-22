@@ -25,7 +25,10 @@ class DatabaseInstance {
             });
 
             console.log("Connecting to database...");
-            DatabaseInstance.instance = new sqlite3("db.db", {
+            if(!process.env["DB_PATH"]) {
+                throw new Error("DB_PATH env var is not set!");
+            }
+            DatabaseInstance.instance = new sqlite3(process.env["DB_PATH"], {
                 fileMustExist: false,
                 readonly: false
             });
