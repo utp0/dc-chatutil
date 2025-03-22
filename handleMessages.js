@@ -60,19 +60,29 @@ async function recordNew(message) {
 
     let repliedToId = null;
     if (("" + message.type).toUpperCase().trim() === "REPLY") {
-        let referenced = await message.fetchReference();
+        let referenced = null;
+        try {
+            referenced = await message.fetchReference();
+        } catch (error) {
+            console.debug(`Failed to get referenced message of reply (${message.id})\n${error}\n== caught recordNew fetchReference`);
+            referenced = null;
+        }
         try {
             if (referenced && referenced.id) {
                 repliedToId = referenced.id;
                 // also send that off to be saved
                 recordNew(referenced);
-                let refAuthor = await referenced.author.fetch()
-                userSeen(refAuthor, referenced.createdTimestamp);
+                try {
+                    let refAuthor = await referenced.author.fetch();
+                    userSeen(refAuthor, referenced.createdTimestamp);
+                } catch (error) {
+                    console.debug(`User not found by reference, not saving.\n${error}\n== caught recordNew userSeen`)
+                }
             } else {
                 console.debug(`Reply reference missing messageId, not saving it. (${message.id})`);
             }
         } catch (error) {
-            console.error(`Failed to get referenced message (${message.id}):\n${error}`);
+            console.error(`Failed to get referenced message (${message.id}):\n${error}\n== caught `);
         }
     }
 
