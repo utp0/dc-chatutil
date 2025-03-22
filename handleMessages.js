@@ -32,9 +32,10 @@ function recordNew(message) {
             mentions_everyone,
             mentions_users,
             mentions_roles,
+            edit_time,
             edit_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
@@ -252,6 +253,9 @@ module.exports = {
     updateGuild,
     recordReaction,
     userSeen,
+    updateChannel,
+    updateThread,
+    recordDeletion,
     updateChannel,
     updateThread,
     recordDeletion,
