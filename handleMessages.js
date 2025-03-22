@@ -14,7 +14,7 @@ require("./dbSetup.js").setup(db);
  * 
  * @param {Message} message entire message object
  */
-function recordNew(message) {
+async function recordNew(message) {
     let stmt;
     try {
         stmt = db.prepare(
@@ -32,14 +32,14 @@ function recordNew(message) {
             mentions_everyone,
             mentions_users,
             mentions_roles,
-            edit_time,
             edit_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
     } catch (error) {
         console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
         console.error(error);
+        return;
     }
 
     let attachmentsJson = JSON.stringify(message.attachments.map(a => a.url));
@@ -58,6 +58,24 @@ function recordNew(message) {
         nick = message.author.tag;
     }
 
+    let repliedToId = null;
+    if (("" + message.type).toUpperCase().trim() === "REPLY") {
+        let referenced = await message.fetchReference();
+        try {
+            if (referenced && referenced.id) {
+                repliedToId = referenced.id;
+                // also send that off to be saved
+                recordNew(referenced);
+                let refAuthor = await referenced.author.fetch()
+                userSeen(refAuthor, referenced.createdTimestamp);
+            } else {
+                console.debug(`Reply reference missing messageId, not saving it. (${message.id})`);
+            }
+        } catch (error) {
+            console.error(`Failed to get referenced message (${message.id}):\n${error}`);
+        }
+    }
+
     try {
         let last = stmt.run(
             message.id,
@@ -69,7 +87,7 @@ function recordNew(message) {
             message.createdTimestamp ?? 0,
             attachmentsJson ?? "",
             message.type ?? "",  // probably always has a value
-            ("" + message.type).toUpperCase().trim() === "REPLY" ? message.reference.messageId : "",
+            repliedToId ?? "",
             message.mentions.everyone ? 1 : 0,
             mentionsUsers ?? "",
             mentionsRoles ?? "",
@@ -93,7 +111,12 @@ function userSeen(author, timestamp) {
             author.bot === true ? 1 : 0,
             author.system === true ? 1 : 0
         )
-        // Update user details if needed
+    } catch (error) {
+        console.error(`Database error! Probably closed. (${error.code}, db status: ${db.open}`);
+        console.error(error);
+    }
+    // Update user details if needed
+    try {
         const stmt2 = db.prepare(
             `INSERT OR IGNORE INTO userdetails (
             id, name, create_time, avatar, banner, banner_color, accent_color, avatar_decoration_data, update_time
@@ -227,7 +250,7 @@ function updateThread(thread) {
     );
     stmt.run(
         thread.id,
-        thread.name ?? "" ,
+        thread.name ?? "",
         thread.createdTimestamp ?? 0,
         thread.parentId ?? 0,
         thread.ownerId ?? 0,
