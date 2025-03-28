@@ -19,7 +19,11 @@ function doSetup(client) {
 
     client.on("messageUpdate", async (mOld, mNew) => {
         recordNew(mNew);
-        userSeen(mNew.author);
+        updateChannel(message.channel, message.guild);
+        userSeen(
+            mNew.author,
+            message.editedTimestamp ?? message.createdTimestamp
+        );
     })
 
     client.on("messageDelete", msg => {
@@ -89,7 +93,7 @@ function doSetup(client) {
     });
 
     client.on("threadListSync", threads => {
-        for(const thread of threads.values()) {
+        for (const thread of threads.values()) {
             updateThread(thread);
         }
     });

@@ -4,7 +4,6 @@ const sqlite3 = require("better-sqlite3");
  * @type {sqlite3.Database}
  */
 const db = require("./dbInstance.js").getDb();
-const { client } = require("./clientInstance.js");
 const { Guild, Message, Channel, ReactionManager, User } = require("discord.js-selfbot-v13");
 
 // db setup

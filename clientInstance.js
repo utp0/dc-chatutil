@@ -1,37 +1,41 @@
-const { Client, GatewayIntentBits } = require("discord.js-selfbot-v13")
+const { Client } = require("discord.js-selfbot-v13")
 
 class ClientInstance {
+    /**
+     * @type {Client}
+     */
     static instance = undefined;
-    constructor() {
+
+    static #destroyClient() {
+        console.log("destroying client...");
+        instance.getClient().destroy();  // TODO: graceful disconnect?
+        console.log("client destroyed.");
+    }
+
+    static openClient() {
         if (!ClientInstance.instance) {
-            this.instance = new Client(/*{
-                intents: [
-                    GatewayIntentBits.GuildMessages,
-                    GatewayIntentBits.GuildMessageReactions,
-                    GatewayIntentBits.DirectMessages,
-                ],
-            }*/);
+            ClientInstance.instance = new Client();
+            process.addListener("SIGINT", () => {
+                ClientInstance.#destroyClient();
+            });
         } else {
-            throw new Error("Client instance already exists (defined)!");
+            console.error("Client instance already exists (defined), doing nothing.");
         }
     }
+
     /**
      * 
      * @returns {Client}
      */
-    getClient() {
-        return this.instance;
+    static getClient() {
+        if (ClientInstance.instance === undefined) {
+            ClientInstance.instance = null;
+            ClientInstance.openClient();
+        }
+        return ClientInstance.instance;
     }
 }
 
-const instance = new ClientInstance();
-
-process.addListener("SIGINT", () => {  // TODO: make this work
-    console.log("destroying client...");
-    instance.getClient().destroy();  // TODO: graceful disconnect?
-    console.log("client destroyed.");
-})
-
 module.exports = {
-    client: instance.getClient()
+    getClient: ClientInstance.getClient
 }

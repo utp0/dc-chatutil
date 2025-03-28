@@ -8,9 +8,9 @@ if (!process.env["DISCORD_TOKEN"]) {
 }
 
 // Client
-const { doSetup } = require("./clientSetup.js");
-const { client } = require("./clientInstance.js");
+const client = require("./clientInstance.js").getClient();
 // setup
+const { doSetup } = require("./clientSetup.js");
 doSetup(client);
 
 // login
@@ -20,10 +20,10 @@ client.login(process.env["DISCORD_TOKEN"].toString()).then((val) => {
 }
 ).catch((reason) => {
     if (reason.code == "TokenInvalid") {
-        console.log("\nLogin token invalid! (TokenInvalid error) exiting.")
-        process.exit(1);
+        console.error("\nLogin token invalid! (TokenInvalid error) exiting.")
     } else {
-        console.error("Login ERROR; ", reason);
+        console.error("Login ERROR, exiting...\n", reason);
     }
+    process.emit("SIGINT");
 }
-)
+);
