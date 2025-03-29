@@ -1,9 +1,6 @@
 const { Client, Guild } = require("discord.js-selfbot-v13");
 const { recordNew, updateGuild, recordReaction, userSeen, updateChannel, updateThread, recordDeletion } = require("./handleMessages.js");
 const { default: PQueue } = require("p-queue");
-/**
- * @type {PQueue}
- */
 
 /**
  * 
