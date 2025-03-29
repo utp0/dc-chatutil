@@ -1,12 +1,14 @@
-const { Client } = require("discord.js-selfbot-v13");
+const { Client, Guild } = require("discord.js-selfbot-v13");
 const { recordNew, updateGuild, recordReaction, userSeen, updateChannel, updateThread, recordDeletion } = require("./handleMessages.js");
-const fs = require("fs");
+const { default: PQueue } = require("p-queue");
 
 /**
  * 
  * @param {Client} client 
  */
 function doSetup(client) {
+    const limiter = require("./RateLimiter.js").getQueue();
+
     client.on("ready", () => {
         console.log(`Client is ready. Username: ${client.user.tag}`);
     });
@@ -17,12 +19,12 @@ function doSetup(client) {
         userSeen(message.author, message.createdTimestamp);
     });
 
-    client.on("messageUpdate", async (mOld, mNew) => {
+    client.on("messageUpdate", (mOld, mNew) => {
         recordNew(mNew);
-        updateChannel(message.channel, message.guild);
+        updateChannel(mNew.channel, mNew.guild);
         userSeen(
             mNew.author,
-            message.editedTimestamp ?? message.createdTimestamp
+            mNew.editedTimestamp ?? mNew.createdTimestamp
         );
     })
 
@@ -31,8 +33,16 @@ function doSetup(client) {
     })
 
     client.on("guildCreate", async guild => {
-        await guild.fetch();
-        updateGuild(guild);
+
+        try {
+            /**
+             * @type {Guild}
+             */
+            const fetchedGuild = await limiter.add(guild.fetch());
+            updateGuild(fetchedGuild);
+        } catch (error) {
+            console.error(`Failed fetching guild! == client.on guildCreate\n`, error);
+        }
     });
 
     client.on("guildUpdate", (gOld, gNew) => {
@@ -63,7 +73,7 @@ function doSetup(client) {
     client.on("messageReactionAdd", async (reaction, user, details) => {
         recordReaction(reaction, true, false);
         userSeen(user, Date.now());
-        await reaction.message.fetch();
+        await limiter.add(() => reaction.message.fetch());
         recordNew(reaction.message);
         updateChannel(reaction.message.channel);
         updateGuild(reaction.message.guild);

@@ -5,6 +5,8 @@ class DatabaseInstance {
      * @type {sqlite3.Database}
      */
     static instance = undefined;
+    static #startTimestamp = Date.now();
+    static #sessionRowId = undefined;
 
     static #closeDB() {
         console.log("closing db...");
@@ -12,9 +14,43 @@ class DatabaseInstance {
         console.log("db closed.");
     }
 
+    static #getStartTimestamp() {
+        return DatabaseInstance.#startTimestamp;
+    }
+
+    static #getSessionRowId() {
+        return DatabaseInstance.#sessionRowId;
+    }
+
+    static #recordSessionTime(close = false) {
+        const startTime = DatabaseInstance.#getStartTimestamp();
+        const endTime = Date.now();
+        try {
+            /**
+             * @type {sqlite3.Statement}
+             */
+            const stmt = DatabaseInstance.getDB().prepare(`
+                INSERT INTO sync_ranges (start_timestamp, end_timestamp, closed_safely)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT (start_timestamp)
+                    DO UPDATE SET
+                        start_timestamp = excluded.start_timestamp,
+                        end_timestamp = excluded.end_timestamp,
+                        closed_safely = excluded.closed_safely;
+            `);
+            DatabaseInstance.#sessionRowId = stmt.run(
+                startTime ?? null,  // making sure there's an error if
+                close ? endTime : -1,
+                close ? 1 : 0
+            ).lastInsertRowid;
+        } catch (error) {
+            console.error(`Failed writing session start time! It is recommended to stop the program.\n`, error);
+        }
+    }
+
     static openDB() {
         if (typeof (DatabaseInstance.instance) !== "undefined") {
-            if (DatabaseInstance.instance && DatabaseInstance.instance.open) {
+            if (DatabaseInstance.instance && DatabaseInstance.instance.open || DatabaseInstance.#sessionRowId !== undefined) {
                 console.warn("Warning: database already opened, doing nothing.");
                 return;
             } else {
@@ -25,6 +61,8 @@ class DatabaseInstance {
             process.addListener("SIGINT", () => {
                 console.log("Waiting to close db...")
                 setTimeout(() => {
+                    // record session end time to db
+                    DatabaseInstance.#recordSessionTime(true);
                     DatabaseInstance.#closeDB();
                 }, 1000);
             });
@@ -38,6 +76,11 @@ class DatabaseInstance {
                 readonly: false
             });
             console.log("Connected to database.");
+
+            // record session start time to db
+            DatabaseInstance.#recordSessionTime(false);
+
+
         } catch (error) {
             console.error("Failed setting up database connection!:\n")
             console.error(error);
