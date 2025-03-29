@@ -50,7 +50,7 @@ function doSetup(client) {
     });
 
     client.on("guildAvailable", async guild => {
-        await guild.fetch();
+        await limiter.add(() => guild.fetch());
         updateGuild(guild);
     });
 
