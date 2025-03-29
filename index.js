@@ -7,10 +7,10 @@ if (!process.env["DISCORD_TOKEN"]) {
     throw new Error("Env var DISCORD_TOKEN not set.");
 }
 
+// setup
+require("./RateLimiter.js").createQueue();
 // Client
 const client = require("./clientInstance.js").getClient();
-// setup
-const limiter = require("./RateLimiter.js")();
 const { doSetup } = require("./clientSetup.js");
 doSetup(client);
 
@@ -28,7 +28,3 @@ client.login(process.env["DISCORD_TOKEN"].toString()).then((val) => {
     process.emit("SIGINT");
 }
 );
-
-module.exports = {
-    limiter,
-}

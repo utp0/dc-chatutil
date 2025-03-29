@@ -8,7 +8,7 @@ class ClientInstance {
 
     static #destroyClient() {
         console.log("destroying client...");
-        instance.getClient().destroy();  // TODO: graceful disconnect?
+        ClientInstance.getClient().destroy();  // TODO: graceful disconnect?
         console.log("client destroyed.");
     }
 

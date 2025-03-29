@@ -280,7 +280,6 @@ function recordDeletion(id) {
 }
 
 module.exports = {
-    sessIntegrityTimes,
     recordNew,
     updateGuilds,
     updateGuild,

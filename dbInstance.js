@@ -5,7 +5,7 @@ class DatabaseInstance {
      * @type {sqlite3.Database}
      */
     static instance = undefined;
-    static #startTimestamp = undefined;
+    static #startTimestamp = Date.now();
     static #sessionRowId = undefined;
 
     static #closeDB() {
@@ -14,13 +14,22 @@ class DatabaseInstance {
         console.log("db closed.");
     }
 
+    static #getStartTimestamp() {
+        return DatabaseInstance.#startTimestamp;
+    }
+
+    static #getSessionRowId() {
+        return DatabaseInstance.#sessionRowId;
+    }
+
     static #recordSessionTime(close = false) {
-        DatabaseInstance.#startTimestamp = Date.now();
+        const startTime = DatabaseInstance.#getStartTimestamp();
+        const endTime = Date.now();
         try {
             /**
              * @type {sqlite3.Statement}
              */
-            const stmt = db.prepare(`
+            const stmt = DatabaseInstance.getDB().prepare(`
                 INSERT INTO sync_ranges (start_timestamp, end_timestamp, closed_safely)
                     VALUES (?, ?, ?)
                     ON CONFLICT (start_timestamp)
@@ -30,9 +39,9 @@ class DatabaseInstance {
                         closed_safely = excluded.closed_safely;
             `);
             DatabaseInstance.#sessionRowId = stmt.run(
-                DatabaseInstance.#startTimestamp ?? null,  // making sure there's an error if
-                close ? Date.now() : -1,
-                close ? true : false
+                startTime ?? null,  // making sure there's an error if
+                close ? endTime : -1,
+                close ? 1 : 0
             ).lastInsertRowid;
         } catch (error) {
             console.error(`Failed writing session start time! It is recommended to stop the program.\n`, error);

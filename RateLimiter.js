@@ -1,11 +1,16 @@
-const pq = require("p-queue");
+const pq = require("p-queue").default;
 
 class RateLimiter {
-    constructor(options = {}) {
+    static queue = undefined;
+    static createQueue(options = {}) {
+        if(this.queue !== undefined) {
+            console.warn("Queue already exists, not creating it.");
+            return;
+        }
         /**
-         * @type {pq.default}
+         * @type {pq}
          */
-        this.queue = new pq.default({
+        RateLimiter.queue = new pq({
             concurrency: options.concurrency || 40,  // 50
             intervalCap: options.intervalCap || 40,  
             interval: options.interval || 1010,  // 1000
@@ -15,6 +20,13 @@ class RateLimiter {
             throwOnTimeout: options.throwOnTimeout ?? true,
         });
     }
+
+    static getQueue() {
+        return RateLimiter.queue;
+    }
 }
 
-module.exports = RateLimiter;
+module.exports = {
+    createQueue: RateLimiter.createQueue,
+    getQueue: RateLimiter.getQueue,
+};

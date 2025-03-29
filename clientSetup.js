@@ -4,13 +4,14 @@ const { default: PQueue } = require("p-queue");
 /**
  * @type {PQueue}
  */
-const limiter = require("./index.js").limiter;
 
 /**
  * 
  * @param {Client} client 
  */
 function doSetup(client) {
+    const limiter = require("./RateLimiter.js").getQueue();
+
     client.on("ready", () => {
         console.log(`Client is ready. Username: ${client.user.tag}`);
     });
@@ -75,7 +76,7 @@ function doSetup(client) {
     client.on("messageReactionAdd", async (reaction, user, details) => {
         recordReaction(reaction, true, false);
         userSeen(user, Date.now());
-        await limiter.add(reaction.message.fetch());
+        await limiter.add(() => reaction.message.fetch());
         recordNew(reaction.message);
         updateChannel(reaction.message.channel);
         updateGuild(reaction.message.guild);

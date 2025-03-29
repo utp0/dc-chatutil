@@ -20,7 +20,7 @@ class DbSetup {
         }
 
         db.exec(`
-        CREATE TABLE "sync_ranges" (
+        CREATE TABLE IF NOT EXISTS "sync_ranges" (
             "start_timestamp"	INTEGER NOT NULL,
             "end_timestamp"	INTEGER NOT NULL DEFAULT -1,
             "closed_safely"	INTEGER NOT NULL DEFAULT 0,
