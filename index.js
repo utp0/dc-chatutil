@@ -15,7 +15,7 @@ const { doSetup } = require("./clientSetup.js");
 doSetup(client);
 
 // login
-
+if (process.env["CONNECT_CLIENT"].trim() === "1") {
 client.login(process.env["DISCORD_TOKEN"].toString()).then((val) => {
     console.log("Login ok probably; ");  // TODO: don't probably
 }
@@ -28,3 +28,4 @@ client.login(process.env["DISCORD_TOKEN"].toString()).then((val) => {
     process.emit("SIGINT");
 }
 );
+}
