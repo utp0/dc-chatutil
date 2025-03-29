@@ -23,10 +23,10 @@ function doSetup(client) {
 
     client.on("messageUpdate", (mOld, mNew) => {
         recordNew(mNew);
-        updateChannel(message.channel, message.guild);
+        updateChannel(mNew.channel, mNew.guild);
         userSeen(
             mNew.author,
-            message.editedTimestamp ?? message.createdTimestamp
+            mNew.editedTimestamp ?? mNew.createdTimestamp
         );
     })
 
