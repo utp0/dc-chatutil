@@ -1,11 +1,18 @@
 const messagesDiv = document.getElementById('messages');
-const messageIdInput = document.getElementById('messageIdInput');
+const timestampInput = document.getElementById('timestampInput');
 const guildIdInput = document.getElementById('guildIdInput');
 const channelIdInput = document.getElementById('channelIdInput');
 const memberIdInput = document.getElementById('memberIdInput');
 const loadButton = document.getElementById('loadButton');
 const prevButton = document.getElementById('prevButton');
 const nextButton = document.getElementById('nextButton');
+
+document.addEventListener("readystatechange", () => {
+    let rs = document.readyState;
+    if (rs === "interactive" || rs === "complete") {
+        if (timestampInput.value == "") timestampInput.value = Date.now();
+    }
+});
 
 let backwardCursor = null;
 let forwardCursor = null;
