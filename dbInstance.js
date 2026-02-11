@@ -1,5 +1,8 @@
 const sqlite3 = require("better-sqlite3");
 
+/**
+ * Singleton class to manage the SQLite database connection.
+ */
 class DatabaseInstance {
     /**
      * @type {sqlite3.Database}
@@ -8,20 +11,36 @@ class DatabaseInstance {
     static #startTimestamp = Date.now();
     static #sessionRowId = undefined;
 
+    /**
+     * Closes the database connection.
+     */
     static #closeDB() {
         console.log("closing db...");
         DatabaseInstance.instance.close();
         console.log("db closed.");
     }
 
+    /**
+     * Gets the timestamp when the database module was initialized.
+     * @returns {number} The start timestamp.
+     */
     static #getStartTimestamp() {
         return DatabaseInstance.#startTimestamp;
     }
 
+    /**
+     * Gets the row ID of the current session in the sync_ranges table.
+     * @returns {number|undefined} The session row ID.
+     */
     static #getSessionRowId() {
         return DatabaseInstance.#sessionRowId;
     }
 
+    /**
+     * Records the session start or end time in the database.
+     *
+     * @param {boolean} [close=false] Whether this is recording the session close (true) or start (false).
+     */
     static #recordSessionTime(close = false) {
         const startTime = DatabaseInstance.#getStartTimestamp();
         const endTime = Date.now();
@@ -48,6 +67,10 @@ class DatabaseInstance {
         }
     }
 
+    /**
+     * Opens the SQLite database connection.
+     * Sets up SIGINT listeners to close the database gracefully.
+     */
     static openDB() {
         if (typeof (DatabaseInstance.instance) !== "undefined") {
             if (DatabaseInstance.instance && DatabaseInstance.instance.open || DatabaseInstance.#sessionRowId !== undefined) {
@@ -90,8 +113,10 @@ class DatabaseInstance {
     }
 
     /**
-     * 
-     * @returns {sqlite3.Database}
+     * Retrieves the singleton SQLite database instance.
+     * If the instance is undefined, it opens a new connection.
+     *
+     * @returns {sqlite3.Database} The SQLite database instance.
      */
     static getDB() {
         if (DatabaseInstance.instance === undefined) {

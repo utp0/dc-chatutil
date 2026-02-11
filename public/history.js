@@ -18,6 +18,12 @@ let backwardCursor = null;
 let forwardCursor = null;
 let currentFilters = {};
 
+/**
+ * Escapes unsafe HTML characters in a string.
+ *
+ * @param {string} unsafe The string to escape.
+ * @returns {string} The escaped string.
+ */
 function escapeHtml(unsafe) {
     return unsafe
         .replace(/&/g, "&amp;")
@@ -27,10 +33,21 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
+/**
+ * Checks if a string consists only of numbers.
+ *
+ * @param {string} str The string to check.
+ * @returns {boolean} True if the string contains only numbers, false otherwise.
+ */
 function isStringOnlyNumbers(str) {
     return /^\d+$/.test(str);
 }
 
+/**
+ * Displays a list of messages in the messages div.
+ *
+ * @param {Array<Object>} messages The array of message objects to display.
+ */
 function displayMessages(messages) {
     messagesDiv.innerHTML = '';
     if (messages.length === 0) {
@@ -47,6 +64,13 @@ function displayMessages(messages) {
     });
 }
 
+/**
+ * Builds a query string from base parameters and current input values.
+ * Updates the currentFilters global object.
+ *
+ * @param {Object} baseParams The base parameters for the query.
+ * @returns {string} The constructed query string.
+ */
 function buildQueryString(baseParams) {
     const params = new URLSearchParams(baseParams);
     const guildId = guildIdInput.value.trim();
@@ -62,6 +86,12 @@ function buildQueryString(baseParams) {
     return params.toString();
 }
 
+/**
+ * Builds a query string using base parameters and the currently active filters.
+ *
+ * @param {Object} baseParams The base parameters for the query.
+ * @returns {string} The constructed query string.
+ */
 function buildQueryStringFromCurrentFilters(baseParams) {
     const params = new URLSearchParams(baseParams);
     if (currentFilters.guildId) params.append('guildId', encodeURIComponent(currentFilters.guildId));

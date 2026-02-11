@@ -10,8 +10,11 @@ const { Guild, Message, Channel, ReactionManager, User } = require("discord.js-s
 require("./dbSetup.js").setup(db);
 
 /**
- * 
- * @param {Message} message entire message object
+ * Records a new message into the database.
+ * Handles attachments, mentions, and reply references.
+ *
+ * @param {Message} message The entire message object from Discord.
+ * @returns {Promise<void>}
  */
 async function recordNew(message) {
     let stmt;
@@ -108,6 +111,12 @@ async function recordNew(message) {
     }
 }
 
+/**
+ * Updates or inserts a user into the database and records their seen status.
+ *
+ * @param {User} author The user object to record.
+ * @param {number} timestamp The timestamp when the user was seen.
+ */
 function userSeen(author, timestamp) {
     try {
         // Adding to the users table will be the least common here
@@ -149,10 +158,11 @@ function userSeen(author, timestamp) {
 }
 
 /**
- * 
- * @param {ReactionManager} reactionManager from a message
- * @param {boolean} boolAdded true if added, false if removed
- * @param {boolean} boolBackfill true if historical, false if event based
+ * Records a reaction add/remove event.
+ *
+ * @param {ReactionManager} reactionManager The reaction manager from a message.
+ * @param {boolean} boolAdded True if the reaction was added, false if removed.
+ * @param {boolean} boolBackfill True if this is a historical backfill, false if it's a live event.
  */
 function recordReaction(reactionManager, boolAdded, boolBackfill) {
     const stmt = db.prepare(
@@ -178,6 +188,11 @@ function recordReaction(reactionManager, boolAdded, boolBackfill) {
     });
 }
 
+/**
+ * Updates a collection of guilds in the database.
+ *
+ * @param {Map<string, Guild>|Collection<string, Guild>} guildcache A collection of guilds.
+ */
 function updateGuilds(guildcache) {
     guildcache.forEach(current => {
         updateGuild(current);
@@ -185,8 +200,9 @@ function updateGuilds(guildcache) {
 }
 
 /**
- * 
- * @param {Guild} guild 
+ * Updates or inserts a single guild into the database.
+ *
+ * @param {Guild} guild The guild object to update.
  */
 function updateGuild(guild) {
     try {
@@ -216,9 +232,10 @@ function updateGuild(guild) {
 }
 
 /**
- * 
- * @param {Channel} channel 
- * @param {Guild} guild
+ * Updates or inserts a channel into the database.
+ *
+ * @param {Channel} channel The channel object to update.
+ * @param {Guild} [guild] The guild the channel belongs to (optional, inferred from channel if not provided).
  */
 function updateChannel(channel) {
     const guild = channel.guild ?? null;
@@ -252,6 +269,11 @@ function updateChannel(channel) {
     }
 }
 
+/**
+ * Updates or inserts a thread into the database.
+ *
+ * @param {ThreadChannel} thread The thread object to update.
+ */
 function updateThread(thread) {
     const stmt = db.prepare(`INSERT OR IGNORE INTO threads(
     id, name, created_timestamp, channel_id, owner_id, archived_timestamp, update_time)
@@ -268,6 +290,11 @@ function updateThread(thread) {
     );
 }
 
+/**
+ * Records the deletion of an entity (message, channel, guild, thread).
+ *
+ * @param {string} id The ID of the deleted entity.
+ */
 function recordDeletion(id) {
     const stmt = db.prepare(`INSERT OR IGNORE INTO deletions (
         id, timestamp)

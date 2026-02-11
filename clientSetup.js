@@ -3,8 +3,10 @@ const { recordNew, updateGuild, recordReaction, userSeen, updateChannel, updateT
 const { default: PQueue } = require("p-queue");
 
 /**
- * 
- * @param {Client} client 
+ * Sets up event listeners for the Discord client.
+ * Handles message creation, updates, deletions, guild events, channel events, and reactions.
+ *
+ * @param {Client} client The Discord client instance.
  */
 function doSetup(client) {
     const limiter = require("./RateLimiter.js").getQueue();

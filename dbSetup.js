@@ -1,9 +1,14 @@
 const { Database } = require("better-sqlite3");
 
+/**
+ * Utility class for setting up the SQLite database schema.
+ */
 class DbSetup {
     /**
-     * setup the sqlite db; should be called every time the program starts
-     * @param {Database} db 
+     * Sets up the SQLite database tables and pragmas.
+     * Should be called every time the program starts.
+     *
+     * @param {Database} db The SQLite database instance.
      */
     static setup(db) {
         // TODO: all of this in an sql file
